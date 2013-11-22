@@ -1445,7 +1445,13 @@ class Common(object):
         self.HOSTS_CONNECT_MATCH = DictType((re.compile(k).search, v) for k, v in self.HOSTS.items() if re.search(r'\d+$', k))
 
         random.shuffle(self.GAE_APPIDS)
+        # Sets self.GAE_FETCHSERVER
+        self.reset_gae_fetchserver()
+
+
+    def reset_gae_fetchserver(self):
         self.GAE_FETCHSERVER = '%s://%s.appspot.com%s?' % (self.GAE_MODE, self.GAE_APPIDS[0], self.GAE_PATH)
+
 
     def info(self):
         info = ''
@@ -1920,7 +1926,8 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 if need_switch:
                     common.GAE_PROFILE = 'google_hk'
                     common.GAE_MODE = 'https'
-                    common.GAE_FETCHSERVER = '%s://%s.appspot.com%s?' % (common.GAE_MODE, common.GAE_APPIDS[0], common.GAE_PATH)
+                    common.reset_gae_fetchserver()
+
                     http_util.max_window = common.GOOGLE_WINDOW = common.CONFIG.getint('google_hk', 'window')
                     common.GOOGLE_HOSTS = list(set(x for x in common.CONFIG.get(common.GAE_PROFILE, 'hosts').split('|') if x))
                     common.GOOGLE_WITHGAE = tuple(common.CONFIG.get('google_hk', 'withgae').split('|'))
@@ -2081,13 +2088,13 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 # gateway error, switch to https mode
                 if response.app_status in (400, 504) or (response.app_status == 502 and common.GAE_PROFILE == 'google_cn'):
                     common.GAE_MODE = 'https'
-                    common.GAE_FETCHSERVER = '%s://%s.appspot.com%s?' % (common.GAE_MODE, common.GAE_APPIDS[0], common.GAE_PATH)
+                    common.reset_gae_fetchserver()
                     continue
                 # appid not exists, try remove it from appid
                 if response.app_status == 404:
                     if len(common.GAE_APPIDS) > 1:
                         appid = common.GAE_APPIDS.pop(0)
-                        common.GAE_FETCHSERVER = '%s://%s.appspot.com%s?' % (common.GAE_MODE, common.GAE_APPIDS[0], common.GAE_PATH)
+                        common.reset_gae_fetchserver()
                         http_util.dns[urlparse.urlparse(common.GAE_FETCHSERVER).netloc] = common.GOOGLE_HOSTS
                         logging.warning('APPID %r not exists, remove it.', appid)
                         continue
@@ -2101,7 +2108,7 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 if response.app_status == 503:
                     if len(common.GAE_APPIDS) > 1:
                         common.GAE_APPIDS.pop(0)
-                        common.GAE_FETCHSERVER = '%s://%s.appspot.com%s?' % (common.GAE_MODE, common.GAE_APPIDS[0], common.GAE_PATH)
+                        common.reset_gae_fetchserver()
                         http_util.dns[urlparse.urlparse(common.GAE_FETCHSERVER).netloc] = common.GOOGLE_HOSTS
                         logging.info('Current APPID Over Quota,Auto Switch to [%s], Retrying…' % (common.GAE_APPIDS[0]))
                         self.do_METHOD_GAE()
@@ -2167,7 +2174,7 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 elif e.args[0] in (errno.ECONNRESET, errno.ETIMEDOUT, errno.ENETUNREACH, 11004):
                     # connection reset or timeout, switch to https
                     common.GAE_MODE = 'https'
-                    common.GAE_FETCHSERVER = '%s://%s.appspot.com%s?' % (common.GAE_MODE, common.GAE_APPIDS[0], common.GAE_PATH)
+                    common.reset_gae_fetchserver()
                 elif e.args[0] == errno.ETIMEDOUT or isinstance(e.args[0], str) and 'timed out' in e.args[0]:
                     if content_length and accept_ranges == 'bytes':
                         # we can retry range fetch here
