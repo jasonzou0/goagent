@@ -1314,7 +1314,9 @@ class HTTPUtil(object):
 class Common(object):
     """Global Config Object"""
 
-    def __init__(self):
+    def __init__(self, use_dev_appserver=False):
+        self._use_dev_appserver = use_dev_appserver
+
         """load config from proxy.ini"""
         ConfigParser.RawConfigParser.OPTCRE = re.compile(r'(?P<option>[^=\s][^=]*)\s*(?P<vi>[=])\s*(?P<value>.*)$')
         self.CONFIG = ConfigParser.ConfigParser()
@@ -1437,7 +1439,12 @@ class Common(object):
 
 
     def reset_gae_fetchserver(self):
-        self.GAE_FETCHSERVER = '%s://%s.appspot.com%s?' % (self.GAE_MODE, self.GAE_APPIDS[0], self.GAE_PATH)
+        base_address = ''
+        if self._use_dev_appserver:
+            base_address = 'http://localhost:8080'
+        else:
+            base_address = '%s://%s.appspot.com' % (self.GAE_MODE, self.GAE_APPIDS[0])
+        self.GAE_FETCHSERVER = '%s%s?' % (base_address, self.GAE_PATH)
 
 
     def info(self):
@@ -1468,7 +1475,17 @@ class Common(object):
         info += '------------------------------------------------------\n'
         return info
 
-common = Common()
+
+def use_dev_gae_fetch_server():
+    """Parse cmdline flags to check if user wants to use dev GAE fetch server."""
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--use_dev_gae_fetch_server', help='Use dev GAE fetch server', 
+                        nargs='?', type=bool, default=False)
+    return True if parser.parse_args().use_dev_gae_fetch_server else False
+
+
+common = Common(use_dev_appserver = use_dev_gae_fetch_server())
 http_util = HTTPUtil(max_window=common.GOOGLE_WINDOW, ssl_validate=common.GAE_VALIDATE or common.PAAS_VALIDATE, ssl_obfuscate=common.GAE_OBFUSCATE, proxy=common.proxy)
 
 
