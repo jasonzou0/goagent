@@ -2,18 +2,23 @@ import glob
 import os
 import sys
 import threading
+import time
 try:
     import OpenSSL
 except ImportError:
     OpenSSL = None
+
+# Import local modules
+from lib.logging import logging
 
 
 class CertUtil(object):
     """CertUtil module, based on mitmproxy"""
 
     ca_vendor = 'GoAgent'
-    ca_keyfile = 'CA.crt'
-    ca_certdir = 'certs'
+    ca_basedir = os.path.dirname(os.path.abspath(__file__))
+    ca_keyfile = os.path.join(ca_basedir, 'CA.crt')
+    ca_certdir = os.path.join(ca_basedir, 'certs')
     ca_lock = threading.Lock()
 
     @staticmethod
@@ -167,8 +172,8 @@ class CertUtil(object):
     @staticmethod
     def check_ca():
         """Checks if CA exists and installs one if not."""
-        capath = os.path.join(os.path.dirname(os.path.abspath(__file__)), CertUtil.ca_keyfile)
-        certdir = os.path.join(os.path.dirname(os.path.abspath(__file__)), CertUtil.ca_certdir)
+        capath = CertUtil.ca_keyfile
+        certdir = CertUtil.ca_certdir
         if not os.path.exists(capath):
             if not OpenSSL:
                 logging.critical('CA.key is not exist and OpenSSL is disabled, ABORT!')

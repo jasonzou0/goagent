@@ -89,87 +89,11 @@ try:
 except ImportError:
     dnslib = None
 
+# Import local modules
+from lib.logging import logging
 
 HAS_PYPY = hasattr(sys, 'pypy_version_info')
 NetWorkIOError = (socket.error, ssl.SSLError, OSError) if not OpenSSL else (socket.error, ssl.SSLError, OpenSSL.SSL.Error, OSError)
-
-
-class Logging(type(sys)):
-    CRITICAL = 50
-    FATAL = CRITICAL
-    ERROR = 40
-    WARNING = 30
-    WARN = WARNING
-    INFO = 20
-    DEBUG = 10
-    NOTSET = 0
-
-    def __init__(self, *args, **kwargs):
-        self.level = self.__class__.INFO
-        self.__set_error_color = lambda: None
-        self.__set_warning_color = lambda: None
-        self.__set_debug_color = lambda: None
-        self.__reset_color = lambda: None
-        if hasattr(sys.stderr, 'isatty') and sys.stderr.isatty():
-            if os.name == 'nt':
-                import ctypes
-                SetConsoleTextAttribute = ctypes.windll.kernel32.SetConsoleTextAttribute
-                GetStdHandle = ctypes.windll.kernel32.GetStdHandle
-                self.__set_error_color = lambda: SetConsoleTextAttribute(GetStdHandle(-11), 0x04)
-                self.__set_warning_color = lambda: SetConsoleTextAttribute(GetStdHandle(-11), 0x06)
-                self.__set_debug_color = lambda: SetConsoleTextAttribute(GetStdHandle(-11), 0x002)
-                self.__reset_color = lambda: SetConsoleTextAttribute(GetStdHandle(-11), 0x07)
-            elif os.name == 'posix':
-                self.__set_error_color = lambda: sys.stderr.write('\033[31m')
-                self.__set_warning_color = lambda: sys.stderr.write('\033[33m')
-                self.__set_debug_color = lambda: sys.stderr.write('\033[32m')
-                self.__reset_color = lambda: sys.stderr.write('\033[0m')
-
-    @classmethod
-    def getLogger(cls, *args, **kwargs):
-        return cls(*args, **kwargs)
-
-    def basicConfig(self, *args, **kwargs):
-        self.level = int(kwargs.get('level', self.__class__.INFO))
-        if self.level > self.__class__.DEBUG:
-            self.debug = self.dummy
-
-    def log(self, level, fmt, *args, **kwargs):
-        sys.stderr.write('%s - [%s] %s\n' % (level, time.ctime()[4:-5], fmt % args))
-
-    def dummy(self, *args, **kwargs):
-        pass
-
-    def debug(self, fmt, *args, **kwargs):
-        self.__set_debug_color()
-        self.log('DEBUG', fmt, *args, **kwargs)
-        self.__reset_color()
-
-    def info(self, fmt, *args, **kwargs):
-        self.log('INFO', fmt, *args)
-
-    def warning(self, fmt, *args, **kwargs):
-        self.__set_warning_color()
-        self.log('WARNING', fmt, *args, **kwargs)
-        self.__reset_color()
-
-    def warn(self, fmt, *args, **kwargs):
-        self.warning(fmt, *args, **kwargs)
-
-    def error(self, fmt, *args, **kwargs):
-        self.__set_error_color()
-        self.log('ERROR', fmt, *args, **kwargs)
-        self.__reset_color()
-
-    def exception(self, fmt, *args, **kwargs):
-        self.error(fmt, *args, **kwargs)
-        traceback.print_exc(file=sys.stderr)
-
-    def critical(self, fmt, *args, **kwargs):
-        self.__set_error_color()
-        self.log('CRITICAL', fmt, *args, **kwargs)
-        self.__reset_color()
-logging = sys.modules['logging'] = Logging('logging')
 
 
 class SSLConnection(object):
@@ -2080,7 +2004,7 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         """deploy fake cert to client"""
         host, _, port = self.path.rpartition(':')
         port = int(port)
-        from certutil import CertUtil
+        from lib.certutil import CertUtil
         certfile = CertUtil.get_cert(host)
         logging.info('%s "AGENT %s %s:%d HTTP/1.1" - -', self.address_string(), self.command, host, port)
         self.__realconnection = None
@@ -2470,7 +2394,7 @@ def main():
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     logging.basicConfig(level=logging.DEBUG if common.LISTEN_DEBUGINFO else logging.INFO, format='%(levelname)s - %(asctime)s %(message)s', datefmt='[%b %d %H:%M:%S]')
     pre_start()
-    from certutil import CertUtil
+    from lib.certutil import CertUtil
     CertUtil.check_ca()
     sys.stdout.write(common.info())
 
