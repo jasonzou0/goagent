@@ -16,7 +16,7 @@ class CertUtil(object):
     """CertUtil module, based on mitmproxy"""
 
     ca_vendor = 'GoAgent'
-    ca_basedir = os.path.dirname(os.path.abspath(__file__))
+    ca_basedir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     ca_keyfile = os.path.join(ca_basedir, 'CA.crt')
     ca_certdir = os.path.join(ca_basedir, 'certs')
     ca_lock = threading.Lock()
