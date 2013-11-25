@@ -23,10 +23,10 @@ class Common(object):
 
     basedir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-    def __init__(self, config_file='proxy.ini', use_dev_appserver=False):
-        self._use_dev_appserver = use_dev_appserver
+    def __init__(self, config_file, use_dev_gae_server=False):
+        self._use_dev_gae_server = use_dev_gae_server
 
-        """load config from proxy.ini"""
+        """load config file"""
         ConfigParser.RawConfigParser.OPTCRE = re.compile(r'(?P<option>[^=\s][^=]*)\s*(?P<vi>[=])\s*(?P<value>.*)$')
         self.CONFIG = ConfigParser.ConfigParser()
         self.CONFIG_FILENAME = os.path.join(Common.basedir, config_file)
@@ -150,7 +150,7 @@ class Common(object):
 
     def reset_gae_fetchserver(self):
         base_address = ''
-        if self._use_dev_appserver:
+        if self._use_dev_gae_server:
             base_address = 'http://localhost:8080'
         else:
             base_address = '%s://%s.appspot.com' % (self.GAE_MODE, self.GAE_APPIDS[0])
@@ -186,14 +186,16 @@ class Common(object):
         return info
 
 
-def use_dev_gae_fetch_server():
-    """Parse cmdline flags to check if user wants to use dev GAE fetch server."""
+def parse_cmdline_flags():
+    """Parse cmdline flags and returns a dict."""
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('--use_dev_gae_fetch_server', help='Use dev GAE fetch server', 
+    parser.add_argument('--use_dev_gae_server', help='Use dev GAE fetch server', 
                         nargs='?', type=bool, default=False)
-    return True if parser.parse_args().use_dev_gae_fetch_server else False
+    parser.add_argument('--config_file', help='Config filename', nargs='?', default='proxy.ini')
+    args = parser.parse_args()
+    return dict(config_file=args.config_file, 
+                use_dev_gae_server=args.use_dev_gae_server)
+    
 
-
-common = Common(use_dev_appserver = use_dev_gae_fetch_server(),
-                config_file='myproxy.ini')
+common = Common(**parse_cmdline_flags())
