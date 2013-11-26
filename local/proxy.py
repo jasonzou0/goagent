@@ -1628,9 +1628,9 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         response = None
         errors = []
         headers_sent = False
-        fetchserver = common.GAE_FETCHSERVER
+        fetchserver = common.get_gae_fetchserver()
         if range_in_query and special_range:
-            fetchserver = re.sub(r'//\w+\.appspot\.com', '//%s.appspot.com' % random.choice(common.GAE_APPIDS), fetchserver)
+            fetchserver = common.get_random_gae_fetchserver()
         for retry in range(common.FETCHMAX_LOCAL):
             try:
                 content_length = 0
@@ -1654,7 +1654,7 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     if len(common.GAE_APPIDS) > 1:
                         appid = common.GAE_APPIDS.pop(0)
                         common.reset_gae_fetchserver()
-                        http_util.dns[urlparse.urlparse(common.GAE_FETCHSERVER).netloc] = common.GOOGLE_HOSTS
+                        http_util.dns[urlparse.urlparse(common.get_gae_fetchserver()).netloc] = common.GOOGLE_HOSTS
                         logging.warning('APPID %r not exists, remove it.', appid)
                         continue
                     else:
@@ -1668,7 +1668,7 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     if len(common.GAE_APPIDS) > 1:
                         common.GAE_APPIDS.pop(0)
                         common.reset_gae_fetchserver()
-                        http_util.dns[urlparse.urlparse(common.GAE_FETCHSERVER).netloc] = common.GOOGLE_HOSTS
+                        http_util.dns[urlparse.urlparse(common.get_gae_fetchserver()).netloc] = common.GOOGLE_HOSTS
                         logging.info('Current APPID Over Quota,Auto Switch to [%s], Retrying…' % (common.GAE_APPIDS[0]))
                         self.do_METHOD_GAE()
                         return
@@ -1679,7 +1679,7 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     http_util.crlf = 0
                     continue
                 if response.app_status == 500 and range_in_query and special_range:
-                    fetchserver = re.sub(r'//\w+\.appspot\.com', '//%s.appspot.com' % random.choice(common.GAE_APPIDS), fetchserver)
+                    fetchserver = common.get_random_gae_fetchserver()
                     logging.warning('500 with range in query, trying another APPID')
                     # logging.warning('Temporary fetchserver: %s -> %s' % (common.GAE_FETCHSERVER, fetchserver))
                     # retry -= 1
@@ -1695,8 +1695,7 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 if not headers_sent:
                     logging.info('%s "GAE %s %s HTTP/1.1" %s %s', self.address_string(), self.command, self.path, response.status, response.getheader('Content-Length', '-'))
                     if response.status == 206:
-                        fetchservers = [re.sub(r'//\w+\.appspot\.com', '//%s.appspot.com' % appid, common.GAE_FETCHSERVER) for appid in common.GAE_APPIDS]
-                        rangefetch = RangeFetch(self.wfile, response, self.command, self.path, self.headers, payload, fetchservers, common.GAE_PASSWORD, maxsize=common.AUTORANGE_MAXSIZE, bufsize=common.AUTORANGE_BUFSIZE, waitsize=common.AUTORANGE_WAITSIZE, threads=common.AUTORANGE_THREADS)
+                        rangefetch = RangeFetch(self.wfile, response, self.command, self.path, self.headers, payload, common.get_all_gae_fetchservers(), common.GAE_PASSWORD, maxsize=common.AUTORANGE_MAXSIZE, bufsize=common.AUTORANGE_BUFSIZE, waitsize=common.AUTORANGE_WAITSIZE, threads=common.AUTORANGE_THREADS)
                         return rangefetch.fetch()
                     if response.getheader('Set-Cookie'):
                         response_replace_header(response, 'Set-Cookie', self.normcookie(response.getheader('Set-Cookie')))

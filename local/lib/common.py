@@ -24,8 +24,6 @@ class Common(object):
     basedir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
     def __init__(self, config_file, use_dev_gae_server=False):
-        self._use_dev_gae_server = use_dev_gae_server
-
         """load config file"""
         ConfigParser.RawConfigParser.OPTCRE = re.compile(r'(?P<option>[^=\s][^=]*)\s*(?P<vi>[=])\s*(?P<value>.*)$')
         self.CONFIG = ConfigParser.ConfigParser()
@@ -143,18 +141,29 @@ class Common(object):
         self.HOSTS_MATCH = DictType((re.compile(k).search, v) for k, v in self.HOSTS.items() if not re.search(r'\d+$', k))
         self.HOSTS_CONNECT_MATCH = DictType((re.compile(k).search, v) for k, v in self.HOSTS.items() if re.search(r'\d+$', k))
 
-        random.shuffle(self.GAE_APPIDS)
         # Sets self.GAE_FETCHSERVER
+        self._use_dev_gae_server = use_dev_gae_server
+        random.shuffle(self.GAE_APPIDS)
         self.reset_gae_fetchserver()
 
 
+    def get_gae_fetchserver(self):
+        return self._dev_gae_server if self._use_dev_gae_server else self._gae_servers[0]
+
+
+    def get_random_gae_fetchserver(self):
+        return self._dev_gae_server if self._use_dev_gae_server else random.choice(self._gae_servers)
+
+
+    def get_all_gae_fetchservers(self):
+        """Returns a list of all GAE fetch servers."""
+        return [self._dev_gae_server] if self._use_dev_gae_server else self._gae_servers
+
+
     def reset_gae_fetchserver(self):
-        base_address = ''
-        if self._use_dev_gae_server:
-            base_address = 'http://localhost:8080'
-        else:
-            base_address = '%s://%s.appspot.com' % (self.GAE_MODE, self.GAE_APPIDS[0])
-        self.GAE_FETCHSERVER = '%s%s?' % (base_address, self.GAE_PATH)
+        self._gae_servers = ['%s://%s.appspot.com%s' % 
+                             (self.GAE_MODE, appid, self.GAE_PATH) for appid in self.GAE_APPIDS]
+        self._dev_gae_server = 'http://localhost:8080%s' % self.GAE_PATH
 
 
     def info(self):
