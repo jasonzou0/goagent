@@ -59,6 +59,7 @@ import struct
 import collections
 import zlib
 import functools
+import random
 import re
 import io
 import base64
